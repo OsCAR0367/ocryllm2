@@ -370,19 +370,16 @@
         const errorDiv = document.getElementById('error');
 
         let selectedFile = null;
+        let currentResultData = null; 
 
-        // Eventos de drag and drop
         dropZone.addEventListener('click', () => fileInput.click());
-
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropZone.classList.add('drag-over');
         });
-
         dropZone.addEventListener('dragleave', () => {
             dropZone.classList.remove('drag-over');
         });
-
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('drag-over');
@@ -427,6 +424,7 @@
             loading.classList.add('show');
             errorDiv.classList.remove('show');
             resultDiv.classList.remove('show');
+            currentResultData = null; 
 
             try {
                 const response = await fetch('http://localhost:5000/upload', {
@@ -451,21 +449,18 @@
 
         function displayResults(data) {
             resultDiv.innerHTML = '';
+            
+            currentResultData = data; 
+            
 
-            if (data.comparison_mode) {
-                // Mostrar ambos resultados
-                for (const [method, result] of Object.entries(data.results)) {
-                    resultDiv.innerHTML += createResultSection(result, method.toUpperCase());
-                }
-            } else {
-                // Mostrar un solo resultado
-                resultDiv.innerHTML = createResultSection(data, 'RESULTADO');
-            }
-
+            resultDiv.innerHTML = createResultSection(data, 'RESULTADO');
             resultDiv.classList.add('show');
         }
 
         function createResultSection(result, title) {
+            // Nota: Los metadatos y gráficos no funcionarán en modo "ambos"
+            // porque el backend solo devuelve un 'text' combinado.
+            // Esto es normal para esa lógica.
             const graphics = result.graphics || [];
             const metadata = result.metadata || {};
 
@@ -474,8 +469,10 @@
                     <div class="result-header">${title}</div>
                     <div class="result-content">
                         <h3>📝 Texto Extraído (Markdown)</h3>
+                        
                         <div class="result-text">${result.text || 'No se extrajo texto'}</div>
-                        <button class="download-btn" onclick="downloadMarkdown('${title}', ${JSON.stringify(result.text).replace(/'/g, "\\'")})">
+                        
+                        <button class="download-btn" onclick="downloadMarkdown('${title}')">
                             💾 Descargar Markdown
                         </button>
 
@@ -493,30 +490,13 @@
 
                         <h3 style="margin-top: 20px;">ℹ️ Metadatos</h3>
                         <div class="metadata">
-                            <div class="metadata-item">
-                                <div class="metadata-label">Archivo</div>
-                                <div class="metadata-value">${escapeHtml(metadata.filename || 'N/A')}</div>
                             </div>
-                            <div class="metadata-item">
-                                <div class="metadata-label">Título</div>
-                                <div class="metadata-value">${escapeHtml(metadata.title || 'N/A')}</div>
-                            </div>
-                            <div class="metadata-item">
-                                <div class="metadata-label">Páginas</div>
-                                <div class="metadata-value">${metadata.pages || 0}</div>
-                            </div>
-                            <div class="metadata-item">
-                                <div class="metadata-label">Método</div>
-                                <div class="metadata-value">${metadata.extraction_method || 'N/A'}</div>
-                            </div>
-                            <div class="metadata-item">
-                                <div class="metadata-label">Fecha de procesamiento</div>
-                                <div class="metadata-value">${new Date(metadata.processed_date).toLocaleString()}</div>
-                            </div>
-                        </div>
 
-                        <button class="download-btn" onclick="downloadJSON('${title}', ${JSON.stringify(JSON.stringify(result))})">
+                        <button class="download-btn" onclick="downloadJSON('${title}')">
                             💾 Descargar JSON Completo
+                        </button>
+                        <button class="download-btn" style="background:#0288d1;" onclick="copyJSONToClipboard(this)">
+                            📋 Copiar JSON
                         </button>
                     </div>
                 </div>
@@ -524,12 +504,16 @@
         }
 
         function escapeHtml(text) {
+            if (!text) return '';
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
 
-        function downloadMarkdown(title, text) {
+        function downloadMarkdown(title) {
+      
+            const text = (currentResultData && currentResultData.text) ? currentResultData.text : '';
+            
             const blob = new Blob([text], { type: 'text/markdown' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -539,7 +523,9 @@
             URL.revokeObjectURL(url);
         }
 
-        function downloadJSON(title, jsonStr) {
+        function downloadJSON(title) {
+            const jsonStr = JSON.stringify(currentResultData, null, 2); 
+
             const blob = new Blob([jsonStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -547,6 +533,22 @@
             a.download = `${title}_result.json`;
             a.click();
             URL.revokeObjectURL(url);
+        }
+
+        function copyJSONToClipboard(buttonElement) {
+
+            const jsonStr = JSON.stringify(currentResultData, null, 2);
+            
+            navigator.clipboard.writeText(jsonStr).then(() => {
+                const originalText = buttonElement.textContent;
+                buttonElement.textContent = '¡Copiado!';
+                setTimeout(() => {
+                    buttonElement.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Error al copiar JSON: ', err);
+                alert('Error al copiar. Revisa la consola.');
+            });
         }
 
         function showError(message) {

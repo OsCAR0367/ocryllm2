@@ -24,7 +24,7 @@ def upload_file():
     try:
         
         file = request.files.get("file")
-        # El valor de "method" vendrá del frontend (ej: "mistral", "gemini", "ambos")
+        # El valor de "method" vendrá del frontend ( "mistral", "gemini", "ambos")
         method = request.form.get("method", "mistral") #
 
         if not file:

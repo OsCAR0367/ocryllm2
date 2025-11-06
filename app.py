@@ -4,11 +4,13 @@ from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 import AI_services  
 from file_converter import FileConverter
+from flask_cors import CORS
 
 
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)
 
 # Crear instancia del servicio de IA
 ai_service = AI_services.AIServices(

@@ -1,0 +1,12 @@
+Flask
+Flask-CORS
+python-dotenv
+Pillow
+pdf2image
+python-pptx
+python-docx
+google-generativeai
+mistralai
+PyMuPDF
+pptxtopdf
+comtypes

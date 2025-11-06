@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR & LLM Extractor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #f8f9ff;
+        }
+
+        .drop-zone:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .drop-zone.drag-over {
+            border-color: #764ba2;
+            background: #e8eaff;
+            transform: scale(1.02);
+        }
+
+        .drop-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+        }
+
+        .drop-text {
+            font-size: 1.2em;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .drop-subtext {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .method-selector {
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+
+        .method-selector label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .method-options {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .method-option {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .method-option input[type="radio"] {
+            display: none;
+        }
+
+        .method-option label {
+            display: block;
+            padding: 15px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .method-option input[type="radio"]:checked + label {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .method-option label:hover {
+            border-color: #667eea;
+        }
+
+        .upload-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #2e7d32;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result-header {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            border-radius: 10px 10px 0 0;
+            font-weight: 600;
+        }
+
+        .result-content {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 0 0 10px 10px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .result-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-section h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .result-text {
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            line-height: 1.6;
+        }
+
+        .metadata {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .metadata-item {
+            padding: 10px;
+            background: #f0f2ff;
+            border-radius: 5px;
+        }
+
+        .metadata-label {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 0.85em;
+        }
+
+        .metadata-value {
+            margin-top: 5px;
+            color: #333;
+        }
+
+        .graphics-list {
+            list-style: none;
+        }
+
+        .graphics-list li {
+            padding: 10px;
+            background: #fff3e0;
+            border-left: 3px solid #ff9800;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+
+        .download-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .download-btn:hover {
+            background: #45a049;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 OCR & LLM Extractor</h1>
+        <p class="subtitle">Arrastra y suelta archivos PDF, DOCX o PPTX</p>
+
+        <div class="drop-zone" id="dropZone">
+            <div class="drop-icon">📄</div>
+            <div class="drop-text">Arrastra tu archivo aquí</div>
+            <div class="drop-subtext">o haz clic para seleccionar</div>
+            <input type="file" id="fileInput" accept=".pdf,.docx,.pptx">
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <div>📎 Archivo seleccionado: <span class="file-name" id="fileName"></span></div>
+        </div>
+
+        <div class="method-selector">
+            <label>Selecciona el método de extracción:</label>
+            <div class="method-options">
+                <div class="method-option">
+                    <input type="radio" id="methodBoth" name="method" value="both" checked>
+                    <label for="methodBoth">🔄 Ambos métodos</label>
+                </div>
+                <div class="method-option">
+                    <input type="radio" id="methodMistral" name="method" value="mistral">
+                    <label for="methodMistral">🔍 Mistral OCR</label>
+                </div>
+                <div class="method-option">
+                    <input type="radio" id="methodGemini" name="method" value="gemini">
+                    <label for="methodGemini">✨ Gemini Vision</label>
+                </div>
+            </div>
+        </div>
+
+        <button class="upload-btn" id="uploadBtn" disabled>Procesar Archivo</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>Procesando archivo... Esto puede tomar unos minutos.</div>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const loading = document.getElementById('loading');
+        const resultDiv = document.getElementById('result');
+        const errorDiv = document.getElementById('error');
+
+        let selectedFile = null;
+
+        // Eventos de drag and drop
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'];
+            
+            if (!validTypes.includes(file.type)) {
+                showError('Tipo de archivo no válido. Solo se permiten PDF, DOCX y PPTX.');
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileInfo.classList.add('show');
+            uploadBtn.disabled = false;
+            errorDiv.classList.remove('show');
+            resultDiv.classList.remove('show');
+        }
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const method = document.querySelector('input[name="method"]:checked').value;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('method', method);
+
+            uploadBtn.disabled = true;
+            loading.classList.add('show');
+            errorDiv.classList.remove('show');
+            resultDiv.classList.remove('show');
+
+            try {
+                const response = await fetch('http://localhost:5000/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data.data);
+                } else {
+                    showError(data.error || 'Error al procesar el archivo');
+                }
+            } catch (error) {
+                showError('Error de conexión: ' + error.message);
+            } finally {
+                loading.classList.remove('show');
+                uploadBtn.disabled = false;
+            }
+        });
+
+        function displayResults(data) {
+            resultDiv.innerHTML = '';
+
+            if (data.comparison_mode) {
+                // Mostrar ambos resultados
+                for (const [method, result] of Object.entries(data.results)) {
+                    resultDiv.innerHTML += createResultSection(result, method.toUpperCase());
+                }
+            } else {
+                // Mostrar un solo resultado
+                resultDiv.innerHTML = createResultSection(data, 'RESULTADO');
+            }
+
+            resultDiv.classList.add('show');
+        }
+
+        function createResultSection(result, title) {
+            const graphics = result.graphics || [];
+            const metadata = result.metadata || {};
+
+            return `
+                <div class="result-section">
+                    <div class="result-header">${title}</div>
+                    <div class="result-content">
+                        <h3>📝 Texto Extraído (Markdown)</h3>
+                        <div class="result-text">${escapeHtml(result.text || 'No se extrajo texto')}</div>
+                        <button class="download-btn" onclick="downloadMarkdown('${title}', ${JSON.stringify(result.text).replace(/'/g, "\\'")})">
+                            💾 Descargar Markdown
+                        </button>
+
+                        ${graphics.length > 0 ? `
+                            <h3 style="margin-top: 20px;">📊 Gráficos Detectados</h3>
+                            <ul class="graphics-list">
+                                ${graphics.map(g => `
+                                    <li>
+                                        <strong>Página ${g.page}:</strong> ${escapeHtml(g.description)}
+                                        <br><small>Tipo: ${g.type}</small>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        ` : ''}
+
+                        <h3 style="margin-top: 20px;">ℹ️ Metadatos</h3>
+                        <div class="metadata">
+                            <div class="metadata-item">
+                                <div class="metadata-label">Archivo</div>
+                                <div class="metadata-value">${escapeHtml(metadata.filename || 'N/A')}</div>
+                            </div>
+                            <div class="metadata-item">
+                                <div class="metadata-label">Título</div>
+                                <div class="metadata-value">${escapeHtml(metadata.title || 'N/A')}</div>
+                            </div>
+                            <div class="metadata-item">
+                                <div class="metadata-label">Páginas</div>
+                                <div class="metadata-value">${metadata.pages || 0}</div>
+                            </div>
+                            <div class="metadata-item">
+                                <div class="metadata-label">Método</div>
+                                <div class="metadata-value">${metadata.extraction_method || 'N/A'}</div>
+                            </div>
+                            <div class="metadata-item">
+                                <div class="metadata-label">Fecha de procesamiento</div>
+                                <div class="metadata-value">${new Date(metadata.processed_date).toLocaleString()}</div>
+                            </div>
+                        </div>
+
+                        <button class="download-btn" onclick="downloadJSON('${title}', ${JSON.stringify(JSON.stringify(result))})">
+                            💾 Descargar JSON Completo
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function downloadMarkdown(title, text) {
+            const blob = new Blob([text], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${title}_extracted.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadJSON(title, jsonStr) {
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${title}_result.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function showError(message) {
+            errorDiv.textContent = '❌ ' + message;
+            errorDiv.classList.add('show');
+        }
+    </script>
+</body>
+</html>

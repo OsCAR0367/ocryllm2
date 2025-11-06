@@ -333,7 +333,7 @@
             <label>Selecciona el método de extracción:</label>
             <div class="method-options">
                 <div class="method-option">
-                    <input type="radio" id="methodBoth" name="method" value="both" checked>
+                    <input type="radio" id="methodBoth" name="method" value="ambos" checked>
                     <label for="methodBoth">🔄 Ambos métodos</label>
                 </div>
                 <div class="method-option">
@@ -474,7 +474,7 @@
                     <div class="result-header">${title}</div>
                     <div class="result-content">
                         <h3>📝 Texto Extraído (Markdown)</h3>
-                        <div class="result-text">${escapeHtml(result.text || 'No se extrajo texto')}</div>
+                        <div class="result-text">${result.text || 'No se extrajo texto'}</div>
                         <button class="download-btn" onclick="downloadMarkdown('${title}', ${JSON.stringify(result.text).replace(/'/g, "\\'")})">
                             💾 Descargar Markdown
                         </button>

@@ -59,7 +59,7 @@ class AIServices:
         }
         return result_data
 
-    
+        
     def _analyze_single_image_gemini(self, image_path, page_num):
         try:
             img = Image.open(image_path)

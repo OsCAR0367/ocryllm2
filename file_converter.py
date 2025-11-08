@@ -1,11 +1,7 @@
 import os
-import io
-from PIL import Image
-from pdf2image import convert_from_path
-from pptx import Presentation
-from docx import Document
 import fitz  
-
+import comtypes.client
+import comtypes 
 
 class FileConverter:
     """Converts various file types to text."""
@@ -29,6 +25,7 @@ class FileConverter:
             raise ValueError("Tipo de archivo no soportado")
     
     def _convert_pdf(self, pdf_path):
+        """Convierte PDF a imágenes PNG."""
 
         images = []
         base_name = os.path.splitext(os.path.basename(pdf_path))[0]
@@ -48,39 +45,80 @@ class FileConverter:
         return images
     
     def _convert_docx(self, docx_path):
-
+        """Convierte DOCX a imágenes PNG vía PDF intermedio."""
+        pdf_path = ""
+        
+        comtypes.CoInitialize()
+        
         try:
-            from docx2pdf import convert
-
             base_name = os.path.splitext(os.path.basename(docx_path))[0]
             pdf_path = os.path.join(self.output_folder, f"{base_name}.pdf")
-            #Convertir de docx a pdf
-            convert(docx_path, pdf_path)
-            #convertir de pdf a imagenes
+
+            docx_path_abs = os.path.abspath(docx_path)
+            pdf_path_abs = os.path.abspath(pdf_path)
+
+            word = comtypes.client.CreateObject("Word.Application")
+            word.Visible = False
+            doc = None
+            try:
+                doc = word.Documents.Open(docx_path_abs)
+                doc.SaveAs(pdf_path_abs, FileFormat=17)
+            except Exception as e:
+                raise Exception(f"Error durante la conversión de Word: {e}")
+            finally:
+                if doc:
+                    doc.Close(0)
+                if word:
+                    word.Quit()
+            
+            print(f"Conversión DOCX completada.")
+            
+            if not os.path.exists(pdf_path):
+                raise FileNotFoundError(f"comtypes no generó el PDF para DOCX: {pdf_path}")
+            
             images = self._convert_pdf(pdf_path)
-            #Eliminar el pdf temporal
+            
             if os.path.exists(pdf_path):
                 os.remove(pdf_path)
             return images
-        except ImportError:
-            raise ImportError("docx2pdf no está instalado.")
+        except Exception as e:
+            raise Exception(f"Fallo en _convert_docx (path: {pdf_path}): {e}")
+        finally:
+        
+            comtypes.CoUninitialize()
+
     
     def _convert_pptx(self, pptx_path):
+ 
+        pdf_path = ""
+        
+
+        comtypes.CoInitialize()
         
         try:
-            from pptxtopdf import convert
-            import os
-            
             base_name = os.path.splitext(os.path.basename(pptx_path))[0]
-            input_dir = os.path.dirname(pptx_path)
-            output_dir = self.output_folder
+            pdf_path = os.path.join(self.output_folder, f"{base_name}.pdf")
             
-            convert(input_dir, output_dir)
-            
-            pdf_path = os.path.join(output_dir, f"{base_name}.pdf")
-            
+            pptx_path_abs = os.path.abspath(pptx_path)
+            pdf_path_abs = os.path.abspath(pdf_path)
+
+            powerpoint = comtypes.client.CreateObject("PowerPoint.Application")
+            presentation = None
+            try:
+                presentation = powerpoint.Presentations.Open(pptx_path_abs, WithWindow=False)
+                presentation.SaveAs(pdf_path_abs, 32) # 32 = pptSaveAsPDF
+            except Exception as e:
+                raise Exception(f"Error durante la conversión de PowerPoint: {e}")
+            finally:
+                if presentation:
+                    presentation.Close()
+                if powerpoint:
+                    powerpoint.Quit()
+
+            print(f"Conversión PPTX completada.")
+
             if not os.path.exists(pdf_path):
-                raise FileNotFoundError(f"No se generó el PDF: {pdf_path}")
+                raise FileNotFoundError(f"comtypes no generó el PDF para PPTX: {pdf_path}")
             
             images = self._convert_pdf(pdf_path)
             
@@ -89,5 +127,7 @@ class FileConverter:
                 
             return images
             
-        except ImportError:
-            raise ImportError("pptxtopdf no está instalado.")
+        except Exception as e:
+            raise Exception(f"Fallo en _convert_pptx (path: {pdf_path}): {e}")
+        finally:
+            comtypes.CoUninitialize()

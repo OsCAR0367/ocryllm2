@@ -41,7 +41,7 @@ def upload_file():
             elif file.filename.lower().endswith(".pptx"):
                 image_paths = converter._convert_pptx(file_path) #
             else:
-                return jsonify({"success": False, "error": "Formato no soportado (usa PDF o PPTX)"}), 400
+                return jsonify({"success": False, "error": "Formato no soportado (usa PDF, word o PPTX)"}), 400
             
             
             result_data = {}
